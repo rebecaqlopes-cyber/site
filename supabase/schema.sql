@@ -94,6 +94,18 @@ alter table public.submissions enable row level security;
 alter table public.feedback enable row level security;
 alter table public.posts enable row level security;
 
+-- Helper function: bypasses RLS to check teacher role (avoids infinite recursion)
+create or replace function public.is_teacher()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and role = 'teacher'
+  );
+$$;
+
 -- PROFILES
 create policy "Users can view own profile" on public.profiles
   for select using (auth.uid() = id);
@@ -102,9 +114,7 @@ create policy "Users can update own profile" on public.profiles
   for update using (auth.uid() = id);
 
 create policy "Teacher can view all student profiles" on public.profiles
-  for select using (
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'teacher')
-  );
+  for select using (public.is_teacher());
 
 -- EXERCISES
 create policy "Teacher can manage own exercises" on public.exercises
@@ -120,14 +130,10 @@ create policy "Students can manage own submissions" on public.submissions
   for all using (student_id = auth.uid());
 
 create policy "Teacher can view all submissions" on public.submissions
-  for select using (
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'teacher')
-  );
+  for select using (public.is_teacher());
 
 create policy "Teacher can update submission status" on public.submissions
-  for update using (
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'teacher')
-  );
+  for update using (public.is_teacher());
 
 -- FEEDBACK
 create policy "Teacher can manage own feedback" on public.feedback
