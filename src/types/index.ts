@@ -35,10 +35,10 @@ export interface Submission {
   id: string
   exercise_id: string
   student_id: string
-  content?: string
-  file_url?: string
+  content?: string | null
+  file_url?: string | null
   status: SubmissionStatus
-  submitted_at?: string
+  submitted_at?: string | null
   created_at: string
   updated_at: string
   exercise?: Exercise
