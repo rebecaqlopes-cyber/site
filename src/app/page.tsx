@@ -7,13 +7,11 @@ import {
 } from 'lucide-react'
 import AnimatedHeroTitle from '@/components/AnimatedHeroTitle'
 
-// ─── DATA (substitua pelos dados reais) ────────────────────────────────────
-
 const STATS = [
-  { value: '+120', label: 'alunos formados' },
-  { value: '5 anos', label: 'de experiência' },
+  { value: '+100', label: 'alunos atendidos' },
+  { value: '6 anos', label: 'de experiência' },
   { value: '4.9★', label: 'avaliação média' },
-  { value: '98%', label: 'de aprovação' },
+  { value: '100%', label: 'aulas individuais' },
 ]
 
 const DIFFERENTIALS = [
@@ -50,15 +48,15 @@ const FAQS = [
   },
   {
     q: 'Com que frequência são as aulas?',
-    a: '[Preencha com sua frequência padrão, ex: As aulas são semanais ou bissemanais, dependendo do plano escolhido. O ideal para progressão rápida é 2 vezes por semana.]',
+    a: 'A frequência é combinada diretamente com a Bel conforme sua rotina e objetivos. O ideal para evolução consistente é de 1 a 2 aulas por semana. Entre em contato para conversarmos sobre o melhor formato para você.',
   },
   {
     q: 'Qual é o investimento?',
-    a: '[Preencha com sua tabela de preços ou política de preços, ex: Os planos começam a partir de R$ [X]/mês. Entre em contato para receber uma proposta personalizada conforme seus objetivos e frequência.]',
+    a: 'Os valores são personalizados conforme frequência e objetivos. Entre em contato pelo WhatsApp para receber uma proposta adequada à sua realidade.',
   },
   {
     q: 'Posso cancelar quando quiser?',
-    a: '[Preencha com sua política de cancelamento, ex: Sim. Não há fidelidade. Solicite o cancelamento com [X] dias de antecedência e não há cobrança adicional.]',
+    a: 'Entre em contato pelo WhatsApp para saber mais sobre as condições de cancelamento e flexibilidade.',
   },
 ]
 
@@ -127,7 +125,7 @@ export default function LandingPage() {
             </div>
             <AnimatedHeroTitle />
             <p className="text-lg md:text-xl text-white/75 mb-10 leading-relaxed max-w-2xl mx-auto">
-              Aulas 100% individuais, exercícios criados para você e feedback direto da professora — tudo organizado em um só lugar.
+              Aulas 100% individuais, exercícios criados para você e feedback direto da professora, tudo organizado em um só lugar.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
               <a
@@ -242,21 +240,21 @@ export default function LandingPage() {
           {/* Bio */}
           <div>
             <p className="text-sm font-semibold text-[#d6865b] uppercase tracking-widest mb-3">Professora</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-[#43645a] mb-2">Rebeca [Sobrenome]</h2>
-            <p className="text-[#43645a]/40 text-sm mb-6">[Certificação principal, ex: CELTA Cambridge · Bacharel em Letras-Inglês · 5 anos de experiência]</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-[#43645a] mb-2">Rebeca Queiroz Lopes</h2>
+            <p className="text-[#43645a]/40 text-sm mb-6">Conhecida como Bel · 6 anos de experiência · Intercâmbio na Austrália</p>
             <p className="text-[#43645a]/70 leading-relaxed mb-4">
-              [Parágrafo pessoal — conte sua história. Por que você ensina inglês? Qual é sua paixão por idiomas? O que te motivou a criar uma plataforma própria? Seja autêntica, isso conecta com os alunos.]
+              Me chamo Rebeca, mas pode me chamar de Bel. Sempre amei idiomas e o inglês virou minha paixão de vida. Já vivi na Austrália em intercâmbio e passei um período na Polônia, acumulando experiências que transformaram completamente minha visão sobre ensinar e aprender uma língua. Voltei ao Brasil com um único objetivo: ajudar outras pessoas a viver o que eu vivi.
             </p>
             <p className="text-[#43645a]/70 leading-relaxed mb-8">
-              [Segundo parágrafo — fale sobre sua metodologia e especialidade. Ex: "Especializo em inglês para profissionais da área de tecnologia e negócios, com foco em fluência real para reuniões, apresentações e networking internacional."]
+              Em 6 anos de aulas particulares, já acompanhei mais de 100 alunos — do iniciante absoluto ao avançado, de quem quer aprender inglês por prazer a quem precisa para uma vaga de emprego, uma viagem ou uma mudança de vida. Não importa o seu nível ou objetivo: existe um caminho feito para você.
             </p>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
               {[
-                { icon: Award, label: '[Certificação 1]', sub: 'ex: CELTA Cambridge' },
-                { icon: GraduationCap, label: '[Formação]', sub: 'ex: Letras-Inglês, UFMG' },
-                { icon: Users, label: '+[X] alunos', sub: 'formados na plataforma' },
-                { icon: Clock, label: '+[X] horas', sub: 'de aulas ministradas' },
+                { icon: Award, label: 'Intercâmbio na Austrália', sub: 'experiência internacional' },
+                { icon: GraduationCap, label: '6 anos de experiência', sub: 'aulas particulares' },
+                { icon: Users, label: '+100 alunos', sub: 'de todos os níveis' },
+                { icon: Clock, label: 'Do zero ao avançado', sub: 'todos os objetivos' },
               ].map(item => (
                 <div key={item.label} className="flex items-start gap-3 p-3 rounded-xl bg-[#eeddcc]">
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-[#f0af8f]/40">
