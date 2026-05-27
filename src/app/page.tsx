@@ -80,25 +80,21 @@ export default function LandingPage() {
             <a href="#sobre" className="px-4 py-2 text-sm text-[#43645a]/70 hover:text-[#43645a] hover:bg-[#eeddcc] rounded-lg transition-colors">Sobre</a>
             <a href="#faq" className="px-4 py-2 text-sm text-[#43645a]/70 hover:text-[#43645a] hover:bg-[#eeddcc] rounded-lg transition-colors">FAQ</a>
             <Link href="/login" className="ml-2 px-4 py-2 text-sm text-[#43645a]/70 hover:text-[#43645a] hover:bg-[#eeddcc] rounded-lg transition-colors">Entrar</Link>
-            <a
-              href="https://wa.me/5571992067642?text=Oi+Rebeca%2C+quero+saber+mais+sobre+as+aulas!"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/signup"
               className="ml-1 px-4 py-2 text-sm font-medium text-white bg-[#d6865b] hover:bg-[#c4734a] rounded-lg transition-colors"
             >
-              Entrar em contato
-            </a>
+              Cadastrar
+            </Link>
           </nav>
           <div className="md:hidden flex items-center gap-2">
             <Link href="/login" className="px-3 py-2 text-sm text-[#43645a]/70 hover:text-[#43645a]">Entrar</Link>
-            <a
-              href="https://wa.me/5571992067642?text=Oi+Rebeca%2C+quero+saber+mais+sobre+as+aulas!"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/signup"
               className="px-4 py-2 text-sm font-medium text-white bg-[#d6865b] rounded-lg"
             >
-              Falar com Rebeca
-            </a>
+              Cadastrar
+            </Link>
           </div>
         </div>
       </header>

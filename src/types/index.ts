@@ -22,6 +22,7 @@ export interface Exercise {
   teacher_id: string
   due_date?: string
   published: boolean
+  attachment_url?: string
   created_at: string
   updated_at: string
   student?: Profile

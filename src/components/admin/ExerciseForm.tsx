@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Trash2, Eye, EyeOff, Save } from 'lucide-react'
+import { Loader2, Trash2, Eye, Save, Paperclip, X, FileText } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Exercise } from '@/types'
 
@@ -31,8 +31,12 @@ export default function ExerciseForm({ students, exercise }: Props) {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [attachmentUrl, setAttachmentUrl] = useState(exercise?.attachment_url ?? '')
+  const [removingAttachment, setRemovingAttachment] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: exercise?.title ?? '',
@@ -51,6 +55,27 @@ export default function ExerciseForm({ students, exercise }: Props) {
       setLoading(true)
       try {
         const { data: { user } } = await supabase.auth.getUser()
+
+        let finalAttachmentUrl = attachmentUrl
+
+        if (attachmentFile) {
+          const ext = attachmentFile.name.split('.').pop()
+          const fileId = crypto.randomUUID()
+          const path = `exercises/${user!.id}/${fileId}.${ext}`
+          const { error: uploadError } = await supabase.storage
+            .from('exercise-files')
+            .upload(path, attachmentFile)
+          if (uploadError) throw uploadError
+          finalAttachmentUrl = path
+        }
+
+        if (removingAttachment) {
+          if (exercise?.attachment_url) {
+            await supabase.storage.from('exercise-files').remove([exercise.attachment_url])
+          }
+          finalAttachmentUrl = ''
+        }
+
         const payload = {
           title: data.title,
           description: data.description || null,
@@ -60,6 +85,7 @@ export default function ExerciseForm({ students, exercise }: Props) {
           due_date: data.due_date ? new Date(data.due_date).toISOString() : null,
           published,
           teacher_id: user!.id,
+          attachment_url: finalAttachmentUrl || null,
         }
 
         if (exercise) {
@@ -87,6 +113,9 @@ export default function ExerciseForm({ students, exercise }: Props) {
     if (!confirm('Excluir este exercício permanentemente?')) return
     setDeleting(true)
     try {
+      if (exercise.attachment_url) {
+        await supabase.storage.from('exercise-files').remove([exercise.attachment_url])
+      }
       const { error } = await supabase.from('exercises').delete().eq('id', exercise.id)
       if (error) throw error
       toast.success('Exercício excluído.')
@@ -98,6 +127,12 @@ export default function ExerciseForm({ students, exercise }: Props) {
       setDeleting(false)
     }
   }
+
+  const currentAttachmentName = attachmentFile
+    ? attachmentFile.name
+    : attachmentUrl
+      ? decodeURIComponent(attachmentUrl.split('/').pop() ?? 'arquivo')
+      : null
 
   return (
     <div className="space-y-5">
@@ -142,7 +177,7 @@ export default function ExerciseForm({ students, exercise }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700">Tipo</label>
+            <label className="block text-sm font-medium text-slate-700">Tipo de resposta</label>
             <select
               className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white transition"
               {...register('type')}
@@ -178,6 +213,54 @@ export default function ExerciseForm({ students, exercise }: Props) {
           {...register('content')}
         />
         {errors.content && <p className="text-xs text-red-500">{errors.content.message}</p>}
+      </div>
+
+      {/* Attachment */}
+      <div className="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">Arquivo anexo</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Word, PDF ou qualquer arquivo que o aluno deva baixar e preencher</p>
+        </div>
+
+        {currentAttachmentName && !removingAttachment ? (
+          <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 rounded-xl ring-1 ring-indigo-100">
+            <FileText className="h-5 w-5 text-indigo-500 flex-shrink-0" />
+            <span className="text-sm text-indigo-700 font-medium flex-1 truncate">{currentAttachmentName}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setAttachmentFile(null)
+                setRemovingAttachment(true)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+              className="text-indigo-400 hover:text-red-500 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".doc,.docx,.pdf,.txt,.odt,.ppt,.pptx,.xls,.xlsx"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0] ?? null
+                setAttachmentFile(file)
+                setRemovingAttachment(false)
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 ring-1 ring-slate-200 rounded-xl transition-colors"
+            >
+              <Paperclip className="h-4 w-4" />
+              Anexar arquivo
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
