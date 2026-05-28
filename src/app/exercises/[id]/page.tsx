@@ -157,6 +157,8 @@ export default function ExerciseDetailPage() {
         submitted_at: new Date().toISOString(),
       }
 
+      let submissionId: string | undefined = submission?.id
+
       if (submission) {
         const { error } = await supabase.from('submissions').update(payload).eq('id', submission.id)
         if (error) throw error
@@ -169,6 +171,7 @@ export default function ExerciseDetailPage() {
           .single()
         if (error) throw error
         setSubmission(data)
+        submissionId = data?.id
       }
 
       setResponseFile(null)
@@ -184,7 +187,7 @@ export default function ExerciseDetailPage() {
             recipientId: exercise.teacher_id,
             title: 'Aluno enviou uma resposta',
             body: `Uma resposta foi enviada para o exercício "${exercise.title}"`,
-            link: `/admin/feedback/${(data as { id: string } | null)?.id ?? submission?.id}`,
+            link: `/admin/feedback/${submissionId}`,
           }),
         }).catch(() => {})
       }
