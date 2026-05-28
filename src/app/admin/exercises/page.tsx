@@ -3,6 +3,7 @@ import { Plus, Pencil, Eye, EyeOff } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import DeleteExerciseButton from '@/components/admin/DeleteExerciseButton'
 
 const typeLabels: Record<string, string> = {
   text: 'Texto',
@@ -79,6 +80,11 @@ export default async function AdminExercisesPage() {
                     <Pencil className="h-4 w-4" />
                   </button>
                 </Link>
+                <DeleteExerciseButton
+                  exerciseId={exercise.id}
+                  exerciseTitle={exercise.title}
+                  attachmentPath={exercise.attachment_url ?? null}
+                />
               </div>
             </div>
           ))}
