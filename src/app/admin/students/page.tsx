@@ -3,6 +3,8 @@ import { Users } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
 
 export default async function AdminStudentsPage() {
   const supabase = await createClient()
@@ -40,7 +42,7 @@ export default async function AdminStudentsPage() {
               const exerciseCount = countMap.get(student.id) ?? 0
 
               return (
-                <div key={student.id} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
+                <Link key={student.id} href={`/admin/students/${student.id}`} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
                   <Avatar className="h-10 w-10 flex-shrink-0">
                     <AvatarFallback className="bg-indigo-50 text-indigo-700 text-sm font-bold">
                       {initials}
@@ -56,7 +58,8 @@ export default async function AdminStudentsPage() {
                       Desde {format(new Date(student.created_at), "MMM yyyy", { locale: ptBR })}
                     </p>
                   </div>
-                </div>
+                  <ChevronRight className="h-4 w-4 text-slate-300 flex-shrink-0" />
+                </Link>
               )
             })}
           </div>

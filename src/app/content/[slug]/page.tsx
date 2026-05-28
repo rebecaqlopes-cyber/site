@@ -4,7 +4,6 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import ReactMarkdown from 'react-markdown'
 
 const categoryLabels: Record<string, string> = {
   grammar: 'Gramática',
@@ -71,9 +70,10 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         </p>
       )}
 
-      <div className="prose prose-gray max-w-none">
-        <ReactMarkdown>{post.content}</ReactMarkdown>
-      </div>
+      <div
+        className="prose prose-gray max-w-none"
+        dangerouslySetInnerHTML={{ __html: post.content }}
+      />
     </div>
   )
 }

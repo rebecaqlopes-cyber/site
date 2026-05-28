@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import type { Post } from '@/types'
+import RichTextEditor from '@/components/admin/RichTextEditor'
 
 const schema = z.object({
   title: z.string().min(3, 'Título muito curto'),
@@ -177,16 +178,11 @@ export default function PostForm({ post }: Props) {
 
       <Card>
         <CardContent className="p-6 space-y-2">
-          <Label htmlFor="content">
-            Conteúdo *
-            <span className="text-gray-400 font-normal ml-2 text-xs">(suporta Markdown)</span>
-          </Label>
-          <Textarea
-            id="content"
-            rows={14}
-            placeholder="Escreva o conteúdo do post. Use **negrito**, *itálico*, ## títulos, - listas, > citações..."
-            className="font-mono text-sm resize-none"
-            {...register('content')}
+          <Label>Conteúdo *</Label>
+          <RichTextEditor
+            value={watch('content')}
+            onChange={v => setValue('content', v, { shouldValidate: true })}
+            placeholder="Escreva o conteúdo do post..."
           />
           {errors.content && <p className="text-sm text-red-500">{errors.content.message}</p>}
         </CardContent>
