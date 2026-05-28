@@ -94,7 +94,7 @@ alter table public.submissions enable row level security;
 alter table public.feedback enable row level security;
 alter table public.posts enable row level security;
 
--- Helper function: bypasses RLS to check teacher role (avoids infinite recursion)
+-- Helper: bypasses RLS to check teacher role (avoids infinite recursion)
 create or replace function public.is_teacher()
 returns boolean
 language sql
@@ -106,15 +106,31 @@ as $$
   );
 $$;
 
+-- Helper: returns the current user's role without going through RLS
+create or replace function public.current_user_role()
+returns text
+language sql
+security definer
+stable
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
 -- PROFILES
 create policy "Users can view own profile" on public.profiles
   for select using (auth.uid() = id);
 
+-- WITH CHECK prevents students from escalating their own role
 create policy "Users can update own profile" on public.profiles
-  for update using (auth.uid() = id);
+  for update using (auth.uid() = id)
+  with check (auth.uid() = id and role = public.current_user_role());
 
 create policy "Teacher can view all student profiles" on public.profiles
   for select using (public.is_teacher());
+
+-- Teacher can edit student profiles (e.g. set WhatsApp number)
+create policy "Teacher can update student profiles" on public.profiles
+  for update using (public.is_teacher() and role = 'student');
 
 -- EXERCISES
 create policy "Teacher can manage own exercises" on public.exercises
@@ -126,8 +142,19 @@ create policy "Students can view own published exercises" on public.exercises
   );
 
 -- SUBMISSIONS
-create policy "Students can manage own submissions" on public.submissions
-  for all using (student_id = auth.uid());
+-- Split into granular policies to prevent students from setting status = 'reviewed'
+create policy "Students can view own submissions" on public.submissions
+  for select using (student_id = auth.uid());
+
+create policy "Students can insert own submissions" on public.submissions
+  for insert with check (student_id = auth.uid());
+
+create policy "Students can update own submissions" on public.submissions
+  for update using (student_id = auth.uid())
+  with check (student_id = auth.uid() and status in ('pending', 'submitted'));
+
+create policy "Students can delete own submissions" on public.submissions
+  for delete using (student_id = auth.uid());
 
 create policy "Teacher can view all submissions" on public.submissions
   for select using (public.is_teacher());
@@ -166,7 +193,7 @@ begin
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'role', 'student')
+    'student'  -- always student; role is changed manually by admin in Supabase dashboard
   );
   return new;
 end;

@@ -28,6 +28,8 @@ export default function ExerciseDetailPage() {
   const [submitting, setSubmitting] = useState(false)
   const [downloadingAttachment, setDownloadingAttachment] = useState(false)
   const [downloadingResponse, setDownloadingResponse] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deletingSubmission, setDeletingSubmission] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -81,6 +83,27 @@ export default function ExerciseDetailPage() {
     } finally {
       if (label === 'attachment') setDownloadingAttachment(false)
       else setDownloadingResponse(false)
+    }
+  }
+
+  const handleDeleteSubmission = async () => {
+    if (!submission) return
+    setDeletingSubmission(true)
+    try {
+      if (submission.file_url) {
+        await supabase.storage.from('exercise-files').remove([submission.file_url])
+      }
+      const { error } = await supabase.from('submissions').delete().eq('id', submission.id)
+      if (error) throw error
+      setSubmission(null)
+      setAnswer('')
+      setResponseFile(null)
+      setConfirmDelete(false)
+      toast.success('Resposta excluída. Você pode enviar novamente.')
+    } catch {
+      toast.error('Erro ao excluir resposta.')
+    } finally {
+      setDeletingSubmission(false)
     }
   }
 
@@ -300,7 +323,7 @@ export default function ExerciseDetailPage() {
               </button>
             )}
 
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex items-center gap-3 mt-4 flex-wrap">
               {!isSubmitted && (
                 <button
                   onClick={handleSubmit}
@@ -311,8 +334,38 @@ export default function ExerciseDetailPage() {
                   Enviar resposta
                 </button>
               )}
-              {isSubmitted && (
-                <div className="flex items-center gap-2 text-sm text-blue-600">
+              {isSubmitted && !isReviewed && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <CheckCircle className="h-4 w-4" />
+                    Enviado em {submission?.submitted_at ? format(new Date(submission.submitted_at), "d/MM/yyyy 'às' HH:mm") : '—'}
+                  </div>
+                  {confirmDelete ? (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                      <span className="text-xs text-red-700 font-medium">Excluir resposta?</span>
+                      <button
+                        onClick={handleDeleteSubmission}
+                        disabled={deletingSubmission}
+                        className="px-2.5 py-1 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors disabled:opacity-60"
+                      >
+                        {deletingSubmission ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Confirmar'}
+                      </button>
+                      <button onClick={() => setConfirmDelete(false)} className="px-2.5 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="text-xs text-slate-400 hover:text-red-500 transition-colors underline underline-offset-2"
+                    >
+                      Excluir resposta
+                    </button>
+                  )}
+                </>
+              )}
+              {isReviewed && (
+                <div className="flex items-center gap-2 text-sm text-emerald-600">
                   <CheckCircle className="h-4 w-4" />
                   Enviado em {submission?.submitted_at ? format(new Date(submission.submitted_at), "d/MM/yyyy 'às' HH:mm") : '—'}
                 </div>
