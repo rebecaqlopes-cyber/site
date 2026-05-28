@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { BookOpen, Home, FileText, GraduationCap, LogOut, Menu, X } from 'lucide-react'
+import { BookOpen, Home, FileText, GraduationCap, LogOut, Menu, X, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { Profile } from '@/types'
 import { useState } from 'react'
+import NotificationBell from '@/components/NotificationBell'
 
 interface Props {
   profile: Profile
@@ -18,6 +19,7 @@ const navItems = [
   { href: '/dashboard', icon: Home, label: 'Início' },
   { href: '/exercises', icon: FileText, label: 'Meus exercícios' },
   { href: '/content', icon: GraduationCap, label: 'Aprender inglês' },
+  { href: '/dashboard/profile', icon: User, label: 'Meu perfil' },
 ]
 
 export default function StudentSidebar({ profile }: Props) {
@@ -60,13 +62,14 @@ export default function StudentSidebar({ profile }: Props) {
         mobileOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"
       )}>
         {/* Logo */}
-        <div className="px-5 h-16 flex items-center border-b border-slate-100">
+        <div className="px-5 h-16 flex items-center justify-between border-b border-slate-100">
           <Link href="/dashboard" className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
               <BookOpen className="h-3.5 w-3.5 text-white" />
             </div>
             <span className="font-semibold text-slate-900 text-sm">Rebeca Learning</span>
           </Link>
+          <NotificationBell userId={profile.id} />
         </div>
 
         {/* Nav */}

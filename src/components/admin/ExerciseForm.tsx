@@ -1,14 +1,24 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Loader2, Trash2, Eye, Save, Paperclip, X, FileText } from 'lucide-react'
+import { Loader2, Trash2, Eye, Save, Paperclip, X, FileText, Plus, CheckCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Exercise } from '@/types'
+
+interface MCData { question: string; options: string[]; correct: number }
+
+function parseMC(content: string): MCData | null {
+  try {
+    const d = JSON.parse(content)
+    if (d.options && Array.isArray(d.options)) return d as MCData
+  } catch {}
+  return null
+}
 
 const schema = z.object({
   title: z.string().min(3, 'Título muito curto'),
@@ -36,7 +46,14 @@ export default function ExerciseForm({ students, exercise }: Props) {
   const [removingAttachment, setRemovingAttachment] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
+  const initialMC = exercise?.type === 'multiple_choice' ? (parseMC(exercise.content) ?? null) : null
+  const [mcData, setMcData] = useState<MCData>({
+    question: initialMC?.question ?? '',
+    options: initialMC?.options ?? ['', '', '', ''],
+    correct: initialMC?.correct ?? 0,
+  })
+
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: exercise?.title ?? '',
@@ -93,9 +110,23 @@ export default function ExerciseForm({ students, exercise }: Props) {
           if (error) throw error
           toast.success('Exercício atualizado!')
         } else {
-          const { error } = await supabase.from('exercises').insert(payload)
+          const { data: newEx, error } = await supabase.from('exercises').insert(payload).select().single()
           if (error) throw error
           toast.success(published ? 'Exercício publicado!' : 'Rascunho salvo!')
+
+          if (published && payload.student_id && newEx) {
+            fetch('/api/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'new_exercise',
+                recipientId: payload.student_id,
+                title: 'Novo exercício disponível',
+                body: `A professora publicou um novo exercício: "${payload.title}"`,
+                link: `/exercises/${newEx.id}`,
+              }),
+            }).catch(() => {})
+          }
         }
 
         router.push('/admin/exercises')
@@ -127,6 +158,14 @@ export default function ExerciseForm({ students, exercise }: Props) {
       setDeleting(false)
     }
   }
+
+  const type = watch('type')
+
+  useEffect(() => {
+    if (type === 'multiple_choice') {
+      setValue('content', JSON.stringify(mcData), { shouldValidate: false })
+    }
+  }, [mcData, type])
 
   const currentAttachmentName = attachmentFile
     ? attachmentFile.name
@@ -202,17 +241,86 @@ export default function ExerciseForm({ students, exercise }: Props) {
 
       {/* Content */}
       <div className="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-6 space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700">Conteúdo do exercício *</h3>
-          <p className="text-xs text-slate-400 mt-0.5">Suporta Markdown: **negrito**, *itálico*, ## título, - lista</p>
-        </div>
-        <textarea
-          rows={12}
-          placeholder="Escreva o enunciado e as questões do exercício aqui..."
-          className="w-full px-3.5 py-3 text-sm font-mono border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400 resize-none transition leading-relaxed"
-          {...register('content')}
-        />
-        {errors.content && <p className="text-xs text-red-500">{errors.content.message}</p>}
+        {type === 'multiple_choice' ? (
+          <>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700">Questão de múltipla escolha *</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Marque a alternativa correta clicando no círculo ao lado</p>
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-slate-500">Pergunta</label>
+              <textarea
+                rows={3}
+                placeholder="Ex: What is the correct form of the verb to be in the third person singular?"
+                value={mcData.question}
+                onChange={e => setMcData(prev => ({ ...prev, question: e.target.value }))}
+                className="w-full px-3.5 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400 resize-none transition"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-slate-500">Alternativas (clique no círculo para marcar a correta)</label>
+              {mcData.options.map((opt, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMcData(prev => ({ ...prev, correct: i }))}
+                    className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      mcData.correct === i ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    {mcData.correct === i && <CheckCircle className="h-3.5 w-3.5" />}
+                  </button>
+                  <input
+                    placeholder={`Alternativa ${String.fromCharCode(65 + i)}`}
+                    value={opt}
+                    onChange={e => setMcData(prev => {
+                      const options = [...prev.options]
+                      options[i] = e.target.value
+                      return { ...prev, options }
+                    })}
+                    className="flex-1 px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  />
+                  {mcData.options.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setMcData(prev => {
+                        const options = prev.options.filter((_, idx) => idx !== i)
+                        return { ...prev, options, correct: prev.correct >= options.length ? 0 : prev.correct }
+                      })}
+                      className="text-slate-300 hover:text-red-400 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {mcData.options.length < 6 && (
+                <button
+                  type="button"
+                  onClick={() => setMcData(prev => ({ ...prev, options: [...prev.options, ''] }))}
+                  className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium mt-1"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar alternativa
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700">Conteúdo do exercício *</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Suporta Markdown: **negrito**, *itálico*, ## título, - lista</p>
+            </div>
+            <textarea
+              rows={12}
+              placeholder="Escreva o enunciado e as questões do exercício aqui..."
+              className="w-full px-3.5 py-3 text-sm font-mono border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400 resize-none transition leading-relaxed"
+              {...register('content')}
+            />
+            {errors.content && <p className="text-xs text-red-500">{errors.content.message}</p>}
+          </>
+        )}
       </div>
 
       {/* Attachment */}

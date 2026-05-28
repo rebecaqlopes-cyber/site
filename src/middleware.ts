@@ -35,8 +35,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes
-  const publicRoutes = ['/', '/login', '/signup', '/content']
-  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/content'))
+  const publicRoutes = ['/', '/login', '/signup', '/content', '/forgot-password', '/reset-password', '/auth']
+  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/content') || pathname.startsWith('/auth'))
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))

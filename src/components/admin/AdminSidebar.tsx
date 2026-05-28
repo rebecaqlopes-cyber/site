@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { Profile } from '@/types'
 import { useState } from 'react'
+import NotificationBell from '@/components/NotificationBell'
 
 interface Props {
   profile: Profile
@@ -67,6 +68,7 @@ export default function AdminSidebar({ profile }: Props) {
             </div>
             <span className="font-semibold text-slate-900 text-sm">Rebeca Learning</span>
           </Link>
+          <NotificationBell userId={profile.id} />
         </div>
 
         <div className="px-4 pt-4 pb-2">

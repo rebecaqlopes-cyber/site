@@ -13,6 +13,12 @@ import ReactMarkdown from 'react-markdown'
 import type { Exercise, Submission, Feedback } from '@/types'
 import Link from 'next/link'
 
+interface MCData { question: string; options: string[]; correct: number }
+function parseMC(content: string): MCData | null {
+  try { const d = JSON.parse(content); if (d.options && Array.isArray(d.options)) return d as MCData } catch {}
+  return null
+}
+
 export default function ExerciseDetailPage() {
   const { id } = useParams()
   const router = useRouter()
@@ -23,6 +29,7 @@ export default function ExerciseDetailPage() {
   const [submission, setSubmission] = useState<Submission | null>(null)
   const [feedback, setFeedback] = useState<Feedback[]>([])
   const [answer, setAnswer] = useState('')
+  const [mcChoice, setMcChoice] = useState<number | null>(null)
   const [responseFile, setResponseFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -53,7 +60,13 @@ export default function ExerciseDetailPage() {
 
       if (sub) {
         setSubmission(sub)
-        setAnswer(sub.content ?? '')
+        const mc = ex ? parseMC(ex.content) : null
+        if (mc && sub.content) {
+          const idx = parseInt(sub.content, 10)
+          if (!isNaN(idx)) setMcChoice(idx)
+        } else {
+          setAnswer(sub.content ?? '')
+        }
 
         const { data: fb } = await supabase
           .from('feedback')
@@ -108,7 +121,12 @@ export default function ExerciseDetailPage() {
   }
 
   const handleSubmit = async () => {
-    if (!answer.trim() && !responseFile) {
+    const mc = exercise ? parseMC(exercise.content) : null
+    if (mc && mcChoice === null) {
+      toast.error('Selecione uma alternativa antes de enviar.')
+      return
+    }
+    if (!mc && !answer.trim() && !responseFile) {
       toast.error('Escreva sua resposta ou anexe um arquivo antes de enviar.')
       return
     }
@@ -131,8 +149,9 @@ export default function ExerciseDetailPage() {
         fileUrl = path
       }
 
+      const mc = parseMC(exercise!.content)
       const payload = {
-        content: answer || null,
+        content: mc ? String(mcChoice) : (answer || null),
         file_url: fileUrl,
         status: 'submitted' as const,
         submitted_at: new Date().toISOString(),
@@ -154,6 +173,21 @@ export default function ExerciseDetailPage() {
 
       setResponseFile(null)
       toast.success('Resposta enviada com sucesso!')
+
+      // Notify teacher
+      if (exercise?.teacher_id) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'submission_received',
+            recipientId: exercise.teacher_id,
+            title: 'Aluno enviou uma resposta',
+            body: `Uma resposta foi enviada para o exercício "${exercise.title}"`,
+            link: `/admin/feedback/${(data as { id: string } | null)?.id ?? submission?.id}`,
+          }),
+        }).catch(() => {})
+      }
     } catch {
       toast.error('Erro ao enviar resposta. Tente novamente.')
     } finally {
@@ -180,6 +214,7 @@ export default function ExerciseDetailPage() {
 
   const isSubmitted = submission?.status === 'submitted' || submission?.status === 'reviewed'
   const isReviewed = submission?.status === 'reviewed'
+  const mc = parseMC(exercise.content)
   const attachmentName = exercise.attachment_url
     ? decodeURIComponent(exercise.attachment_url.split('/').pop() ?? 'arquivo')
     : null
@@ -223,9 +258,13 @@ export default function ExerciseDetailPage() {
         {exercise.description && (
           <p className="text-sm text-slate-500 mb-4">{exercise.description}</p>
         )}
-        <div className="prose prose-sm max-w-none text-slate-800">
-          <ReactMarkdown>{exercise.content}</ReactMarkdown>
-        </div>
+        {mc ? (
+          <p className="text-sm text-slate-800 leading-relaxed">{mc.question}</p>
+        ) : (
+          <div className="prose prose-sm max-w-none text-slate-800">
+            <ReactMarkdown>{exercise.content}</ReactMarkdown>
+          </div>
+        )}
       </div>
 
       {/* Teacher attachment download */}
@@ -253,21 +292,101 @@ export default function ExerciseDetailPage() {
 
         {isReviewed ? (
           <>
-            {submission?.content && (
-              <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 whitespace-pre-wrap mb-3">
-                {submission.content}
+            {mc ? (
+              <div className="space-y-2">
+                {mc.options.map((opt, i) => {
+                  const chosen = submission?.content === String(i)
+                  const correct = i === mc.correct
+                  return (
+                    <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm ${
+                      chosen && correct ? 'border-emerald-300 bg-emerald-50 text-emerald-800' :
+                      chosen && !correct ? 'border-red-300 bg-red-50 text-red-800' :
+                      correct ? 'border-emerald-200 bg-emerald-50/50 text-emerald-700' :
+                      'border-slate-100 text-slate-500'
+                    }`}>
+                      <span className="font-semibold w-5">{String.fromCharCode(65 + i)})</span>
+                      <span className="flex-1">{opt}</span>
+                      {chosen && correct && <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />}
+                      {chosen && !correct && <X className="h-4 w-4 text-red-500 flex-shrink-0" />}
+                    </div>
+                  )
+                })}
               </div>
+            ) : (
+              <>
+                {submission?.content && (
+                  <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 whitespace-pre-wrap mb-3">
+                    {submission.content}
+                  </div>
+                )}
+                {responseName && (
+                  <button
+                    onClick={() => downloadFile(submission!.file_url!, 'response')}
+                    disabled={downloadingResponse}
+                    className="inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl ring-1 ring-slate-200 transition-colors"
+                  >
+                    {downloadingResponse ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    {responseName}
+                  </button>
+                )}
+              </>
             )}
-            {responseName && (
-              <button
-                onClick={() => downloadFile(submission!.file_url!, 'response')}
-                disabled={downloadingResponse}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl ring-1 ring-slate-200 transition-colors"
-              >
-                {downloadingResponse ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                {responseName}
-              </button>
-            )}
+          </>
+        ) : mc ? (
+          <>
+            <div className="space-y-2 mb-4">
+              {mc.options.map((opt, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  disabled={isSubmitted}
+                  onClick={() => setMcChoice(i)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm text-left transition-colors disabled:cursor-default ${
+                    mcChoice === i
+                      ? 'border-indigo-400 bg-indigo-50 text-indigo-900 font-medium'
+                      : 'border-slate-200 hover:border-indigo-300 hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 text-xs font-bold transition-colors ${
+                    mcChoice === i ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 text-slate-400'
+                  }`}>{String.fromCharCode(65 + i)}</span>
+                  {opt}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {!isSubmitted && (
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || mcChoice === null}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-60 shadow-sm shadow-indigo-200"
+                >
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  Enviar resposta
+                </button>
+              )}
+              {isSubmitted && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <CheckCircle className="h-4 w-4" />
+                    Enviado em {submission?.submitted_at ? format(new Date(submission.submitted_at), "d/MM/yyyy 'às' HH:mm") : '—'}
+                  </div>
+                  {confirmDelete ? (
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                      <span className="text-xs text-red-700 font-medium">Excluir resposta?</span>
+                      <button onClick={handleDeleteSubmission} disabled={deletingSubmission} className="px-2.5 py-1 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-60">
+                        {deletingSubmission ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Confirmar'}
+                      </button>
+                      <button onClick={() => setConfirmDelete(false)} className="px-2.5 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(true)} className="text-xs text-slate-400 hover:text-red-500 transition-colors underline underline-offset-2">
+                      Excluir resposta
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </>
         ) : (
           <>

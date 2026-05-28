@@ -75,6 +75,21 @@ export default function FeedbackDetailPage() {
       if (error) throw error
       await supabase.from('submissions').update({ status: 'reviewed' }).eq('id', id)
       toast.success('Feedback enviado ao aluno!')
+
+      if (submission?.student_id) {
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'feedback_received',
+            recipientId: submission.student_id,
+            title: 'Feedback da professora',
+            body: `Você recebeu feedback no exercício "${String(exercise?.title ?? '')}"`,
+            link: `/exercises/${submission.exercise_id}`,
+          }),
+        }).catch(() => {})
+      }
+
       router.push('/admin/feedback')
       router.refresh()
     } catch {
