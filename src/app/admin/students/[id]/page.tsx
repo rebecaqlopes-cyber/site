@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, BookOpen, CheckCircle, Clock, Download, FileText, MessageSquare } from 'lucide-react'
+import { ArrowLeft, BookOpen, CheckCircle, Clock, MessageSquare } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import StudentFileDownload from '@/components/admin/StudentFileDownload'
+import WhatsAppEdit from '@/components/admin/WhatsAppEdit'
 
 export default async function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -49,6 +50,9 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
           <p className="text-xs text-slate-400 mt-1">
             Aluno desde {format(new Date(student.created_at), "MMMM 'de' yyyy", { locale: ptBR })}
           </p>
+          <div className="mt-3">
+            <WhatsAppEdit studentId={student.id} initialWhatsapp={student.whatsapp ?? null} />
+          </div>
         </div>
         <div className="hidden sm:grid grid-cols-3 gap-4 text-center">
           <div>

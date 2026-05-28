@@ -6,6 +6,7 @@ export interface Profile {
   full_name: string
   role: UserRole
   avatar_url?: string
+  whatsapp?: string | null
   created_at: string
   updated_at: string
 }
